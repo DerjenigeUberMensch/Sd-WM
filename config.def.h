@@ -23,6 +23,7 @@
 #define CFG_ICON_SHOW           1           /* 1 show icon (mem expensive 0.1-1Mib per icon); 0 to disable      */
 #define CFG_ICON_SIZE           16          /* icon size                                                        */
 #define CFG_ICON_SPACE          2           /* space between icon and title                                     */
+#define CFG_SHOW_WM_NAME        0           /* 1 Show window manager name at end of status bar; 0 to disable    */
 /* alt-tab configuration */
 /* to get keycode you can do xev and press a key */
 #define CFG_ALT_TAB_SWITCH_KEY      64      /* Hold this key to keep alt-tab active                             */
@@ -37,7 +38,6 @@
 #define CFG_ALT_TAB_SHOW_PREVIEW    1       /* shows window preview when alt tabbing                            */
 #define CFG_ALT_TAB_FIXED_TILE      0       /* 1 alttab only changes focused window; 0 to disable               */
 /* Misc */
-#define CFG_SHOW_WM_NAME            0       /* 1 Show window manager name at end of status bar; 0 to disable    */
 #define CFG_MONITOR_FACT            0.55    /* factor of master area size [0.05..0.95]                          */
 #define CFG_MAX_CLIENT_COUNT        250     /* max number of clients assuming you can handle this many          */
 #define CFG_MASTER_COUNT            1       /* number of clients in master area                                 */
@@ -56,7 +56,10 @@
 #define CFG_DMENU_COL_NORM_FOREGROUND       "#ffffff" /* dmenu text colour for NON selected items       */
 #define CFG_DMENU_COL_SEL_BACKGROUND        "#000000" /* dmenu background colour for SELECTED items     */
 #define CFG_DMENU_COL_SEL_FOREGROUND        "#ffffff" /* dmenu text colour for SELECTED items           */
-
+/* caveats
+ * CFG_MAX_CLIENT_COUNT may limit your client count lower than usual when using a compositor.
+ * FAST_INPUT feels janky
+ */
 static const char *fonts[]      =   {"monospace:size=12" };
 static const char dmenufont[]   =   {"monospace:size=12"};
 

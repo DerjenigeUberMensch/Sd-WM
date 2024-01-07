@@ -67,6 +67,7 @@ Once you **finish** `rm config.h` if it exists and **recompile.**
 ## Troubleshoot
 This is an **_experimental_** build and may contain bugs,
 Screen tearing can be mitigated by using a compositor or by enabling it in your driver setting
+HOWEVER do note that using a compositor may reduce performance when having a large amounts of windows open +50
 
 If you have any **major** **issues** with a **current** commit you can **revert** to a **previous commit** for a generally stabler version.
 Or you can open an **[issue](https://github.com/DerjenigeUberMensch/Sd-WM/issues)** about it.

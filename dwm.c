@@ -50,6 +50,7 @@
 
 #include "drw.h"
 #include "util.h" /* Include near dpy defintions due to conflicting variables */
+#include "pool.h"
 /* macros */
 #define BUTTONMASK              (ButtonPressMask|ButtonReleaseMask)
 #define CLEANMASK(mask)         (mask & ~(numlockmask|LockMask) & (ShiftMask|ControlMask|Mod1Mask|Mod2Mask|Mod3Mask|Mod4Mask|Mod5Mask))
@@ -240,8 +241,8 @@ struct Rule
 };
 
 /* function declarations */
-static void alttab();
-static void alttabend();
+static void alttab(void);
+static void alttabend(void);
 static void applyrules(Client *c);
 static int  applysizehints(Client *c, int *x, int *y, int *w, int *h, int interact);
 static void arrange(Monitor *m);
@@ -311,15 +312,16 @@ static int  sendevent(Client *c, Atom proto);
 static void sendmon(Client *c, Monitor *m);
 static void setclientstate(Client *c, long state);
 static void setclientlayout(Monitor *m, int layout);
-static void setdesktop();
-static void setdesktopnames();
-static void setdesktopnum();
+static void setdesktop(void);
+static void setdesktopnames(void);
+static void setdesktopnum(void);
 static void setfocus(Client *c);
 static void setfullscreen(Client *c, int fullscreen);
 static void setshowbar(Monitor *m, int show);
 static void setup(void);
+static Pool *setuppool(void);
 static void seturgent(Client *c, int urg);
-static void setviewport();
+static void setviewport(void);
 static void showhide(Client *c);
 static void sigchld();
 static void sighup();
@@ -332,7 +334,7 @@ static void unmapnotify(XEvent *e);
 static void updatebarpos(Monitor *m);
 static void updatebars(void);
 static void updateclientlist(void);
-static void updatedesktop();
+static void updatedesktop(void);
 static int  updategeom(void);
 static void updatemotifhints(Client *c);
 static void updatenumlockmask(void);
@@ -358,6 +360,7 @@ static int  xerrorstart(Display *dpy, XErrorEvent *ee);
 static void alttabend();
 /* variables */
 static Client *lastfocused = NULL;
+static Pool *pl = NULL;
 static char stext[256];     /* status WM_NAME text */
 static int screen;
 static int sw, sh;          /* X display screen geometry width, height */
@@ -466,7 +469,12 @@ alttabend()
             selmon->altsnext[0] = buff;
             /* restacking */
         }
-        for (int i = selmon->nTabs - 1; i >= 0; i--)  focus(selmon->altsnext[i]);
+        for (int i = selmon->nTabs - 1; i >= 0; i--)
+        {
+            detach(selmon->altsnext[i]);
+            attach(selmon->altsnext[i]);
+            focus(selmon->altsnext[i]);
+        }
         arrange(selmon); 
     }
 
@@ -1136,7 +1144,6 @@ drawbartabs(Monitor *m, int x, int y, int maxw, int height)
     /* set default scheme (blank canvas)*/
     drw_setscheme(drw, scheme[curscheme]);
     drw_rect(drw, x, 0, maxw, height, 1, 1);
-    /* get count */
     for(c = m->clients; c; c = c->snext) tabcnt += !!ISVISIBLE(c);
     /* exit if no clients selected */
     if(!tabcnt) return;
@@ -1163,7 +1170,7 @@ drawbartabs(Monitor *m, int x, int y, int maxw, int height)
         drw_text(drw, x + btpos, y, tabsz, height, iconspace, c->name, 0);
         /* draw icon */
         if(c->icon)
-            drw_pic(drw, x + btpos + iconspace - lrpad, y + ((height - c->ich) >> 1), c->icw, c->ich, c->icon);
+            drw_pic(drw, x + btpos, y + ((height - c->ich) >> 1), c->icw, c->ich, c->icon);
         ++cc;
     }
 }
@@ -1573,7 +1580,6 @@ keyrelease(XEvent *e)
 }
 
 /* handle new windows */
-/* NOTE: most of these values are uninitialized so using them is unwise, Set them First! */
 void
 manage(Window w, XWindowAttributes *wa)
 {
@@ -1582,7 +1588,7 @@ manage(Window w, XWindowAttributes *wa)
     XWindowChanges wc;
 
     /* alloc enough memory for new client struct */
-    c = ecalloc(1, sizeof(Client));
+    c = poolgrab(pl);
     ++accnum;
     c->win = w;
     /* initialize geometry */
@@ -1943,6 +1949,7 @@ resizeclient(Client *c, int x, int y, int w, int h)
 void
 resizerequest(XEvent *e)
 {
+    /* popup windows sometimes need this */
     Monitor *m;
     Client *c;
     XResizeRequestEvent *ev = &e->xresizerequest;
@@ -1953,7 +1960,6 @@ resizerequest(XEvent *e)
 void
 restack(Monitor *m)
 {
-    /* fix later slow when restacking many clients */
     Client *c;
     XEvent ev;
     XWindowChanges wc;
@@ -1976,9 +1982,9 @@ restack(Monitor *m)
             if(!c->isfloating) { XConfigureWindow(dpy, c->win, CWSibling|CWStackMode, &wc); wc.sibling = c->win;}
             else XRaiseWindow(dpy, c->win);
         }
-        for(int i = 0; i < ccontop; ++i) { XRaiseWindow(dpy, alwaysontop[i]->win); }
     }
     if(m->sel->isfloating || m->sel->alwaysontop || m->sel->isfullscreen) XRaiseWindow(dpy, m->sel->win);
+    for(int i = 0; i < ccontop; ++i) { XRaiseWindow(dpy, alwaysontop[i]->win); }
     XSync(dpy, False);
     while (XCheckMaskEvent(dpy, EnterWindowMask, &ev));
 }
@@ -2180,6 +2186,8 @@ setup(void)
     sigchld(0);
     signal(SIGHUP, sighup);
 	signal(SIGTERM, sigterm);
+    /* setup pool (biggest risk of failure due to calloc) */
+    pl = setuppool();
     /* init screen */
     screen = DefaultScreen(dpy);
     sw = DisplayWidth(dpy, screen);
@@ -2259,6 +2267,11 @@ setup(void)
     focus(NULL);
 }
 
+Pool *
+setuppool()
+{
+    return poolcreate(CFG_MAX_CLIENT_COUNT, sizeof(Client));
+}
 void
 seturgent(Client *c, int urg)
 {
@@ -2467,7 +2480,7 @@ unmanage(Client *c, int destroyed)
         XUngrabServer(dpy);
     }
     if (lastfocused == c) lastfocused = NULL;
-    free(c);
+    poolfree(pl, c);
     focus(NULL);
     updateclientlist();
     arrange(m);

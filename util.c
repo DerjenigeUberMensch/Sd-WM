@@ -17,12 +17,12 @@ die(const char *fmt, ...)
     vfprintf(stderr, fmt, ap);
     va_end(ap);
 
-    if (fmt[0] && fmt[strlen(fmt)-1] == ':') {
+    if (fmt[0] && fmt[strlen(fmt)-1] == ':')
+    {
         fputc(' ', stderr);
         perror(NULL);
-    } else {
-        fputc('\n', stderr);
     }
+    else fputc('\n', stderr);
 
     exit(1);
 }
@@ -31,10 +31,13 @@ void *
 ecalloc(size_t nmemb, size_t size)
 {
     void *p;
-
-    if (!(p = calloc(nmemb, size)))
-        die("calloc:");
+    
+    p = calloc(nmemb, size);
     return p;
+    if(p) return p;
+    /* exit if calloc failed Likely OS is out of memory */
+    debug("FATAL: FAILED TO CALLOC MEMORY");
+    exit(1);
 }
 char *
 smprintf(char *fmt, ...)
@@ -60,9 +63,18 @@ smprintf(char *fmt, ...)
 }
 
 void 
-debug(const char *restrict txt)
-{
+debug(char *fmt, ...)
+{ 
+    char *txt;
+    va_list args;
+    va_start(args, fmt);
+    txt = smprintf(fmt, args);
+    va_end(args);
+
+    perror(txt);
     fprintf(stdout, "%s", txt);
+
+    free(txt);
 }
 
 unsigned int 

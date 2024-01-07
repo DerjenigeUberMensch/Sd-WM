@@ -166,6 +166,7 @@ ResizeWindow(const Arg *arg) /* resizemouse */
     int nx, ny;
     int horiz, vert;
     int basew, baseh;
+    int incw, inch;
     const float frametime = 1000 / (CFG_WIN_RATE + !CFG_WIN_RATE); /*prevent 0 division errors */
 
     unsigned int dui;
@@ -201,10 +202,10 @@ ResizeWindow(const Arg *arg) /* resizemouse */
     och = c->h;
     ocx = c->x;
     ocy = c->y;
-
+    incw = c->incw;
+    inch = c->inch;
     basew = MAX(c->minw, CFG_RESIZE_BASE_WIDTH);
     baseh = MAX(c->minh, CFG_RESIZE_BASE_HEIGHT);
-    XRaiseWindow(dpy, c->win); /* redundant but just in case */
     do 
     {
         XMaskEvent(dpy, MOUSEMASK|ExposureMask|SubstructureRedirectMask, &ev);
@@ -225,10 +226,11 @@ ResizeWindow(const Arg *arg) /* resizemouse */
             nh = och + vert * (ev.xmotion.y - rcury);
             /* clamp */
             nw = MAX(nw, basew); nh = MAX(nh, baseh);
+            if(nw < incw) nw = ocw;
+            if(nh < inch) nh = ocw;
             /* flip sign if -1 else default to 0 */
             nx = ocx + !~horiz * (ocw - nw);
             ny = ocy + !~vert  * (och - nh);
-
             resize(c, nx, ny, nw, nh, 1);
             break;
         }
@@ -238,7 +240,7 @@ ResizeWindow(const Arg *arg) /* resizemouse */
         MaximizeWindowHorizontal(NULL);
     if(HEIGHT(c) + bh * c->mon->showbar >= c->mon->wh)
         MaximizeWindowVertical(NULL);
-    if(clientdocked(c) && c->isfloating)
+    if(clientdocked(c))
     {
         /* maxmize stuff */
         c->ismax = 1;
@@ -246,7 +248,7 @@ ResizeWindow(const Arg *arg) /* resizemouse */
         c->oldy += CFG_SNAP;
         c->isfloating = 0;
     }
-    else if(c->isfloating)c->ismax = 0;
+    else c->ismax = 0;
     XUngrabPointer(dpy, CurrentTime);
     while (XCheckMaskEvent(dpy, EnterWindowMask, &ev));
     if ((m = recttomon(c->x, c->y, c->w, c->h)) != selmon) {

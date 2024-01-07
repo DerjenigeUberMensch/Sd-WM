@@ -32,28 +32,30 @@ LIBS = -L${X11LIB} -lX11 ${XINERAMALIBS} ${FREETYPELIBS} ${IMLIB2LIBS} ${XRENDER
 #X86 isnt explicitly supported and some code might need to be tweaked
 X86SUPPORT = -m32
 X64SUPPORT = -march=x86-64 -mtune=generic
+STATICLINK = -static
+DYNAMICLINK= -ldl
 SELFFLAGS  = -march=native -mtune=native
 STRIPFLAGS = -ffunction-sections -fdata-sections -Wl,--strip-all -s
 DEBUGFLAGS = -ggdb -g -pg 
 WARNINGFLAGS = -pedantic -Wall -Wextra -Wno-deprecated-declarations -Wshadow -Wmaybe-uninitialized 
-SIZEFLAGS  = -ffunction-sections -fdata-sections -finline-functions
+SIZEFLAGS  = -ffunction-sections -fdata-sections
 
 CPPFLAGS = -D_DEFAULT_SOURCE -D_BSD_SOURCE -D_POSIX_C_SOURCE=200809L -DVERSION=\"${VERSION}\" ${XINERAMAFLAGS}
-cFLAGS   = -std=c99 ${WARNINGFLAGS} ${INCS} ${CPPFLAGS} ${X64SUPPORT} 
+cFLAGS   = -std=c99 ${WARNINGFLAGS} ${INCS} ${CPPFLAGS} ${X64SUPPORT} ${STATICLINK}
 #-flto saves a couple instructions in certain functions; 
 RELEASEFLAGS = ${cFLAGS} ${STRIPFLAGS} -flto
 
-DEBUG 	= ${cFLAGS} ${DEBUGFLAGS} -O0
+DEBUG 	= ${cFLAGS} ${DEBUGFLAGS} -O2
 SIZE  	= ${RELEASEFLAGS} -Os
 SIZEONLY= ${RELEASEFLAGS} ${SIZEFLAGS} -Oz
 
 #Release Stable (-O2)
-RELEASE = ${RELEASEFLAGS} -ftree-vectorize -O2
+RELEASE = ${RELEASEFLAGS} -O2
 #Release Speed (-O3)
-RELEASES= ${RELEASEFLAGS} -O3
+RELEASES= ${RELEASEFLAGS} -O3 
 
 #Build using cpu specific instruction set for more performance (Optional)
-BUILDSELF = ${RELEASEFLAGS} ${SELFFLAGS} -O3
+BUILDSELF = ${RELEASEFLAGS} ${SELFFLAGS} ${DYNAMICLINK} -O3
 
 #Set your options or presets (see above) ex: ${PRESETNAME}
 CFLAGS = ${RELEASES}
